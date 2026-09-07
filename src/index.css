@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Tema mengikuti setelan sistem, dan bisa ditimpa pengguna lewat
+   class `dark` di <html>. Semua warna berasal dari tailwind.config.js
+   — jangan menulis hex di sini.
+   ============================================================ */
+@layer base {
+  html { color-scheme: light dark; }
+  body {
+    @apply bg-ground text-ink font-body antialiased;
+  }
+  html.dark body { @apply bg-ground-dark text-ink-dark; }
+  :focus-visible { @apply outline-none ring-2 ring-frost dark:ring-frost-dark ring-offset-1
+                    ring-offset-surface dark:ring-offset-surface-dark rounded; }
+  h1,h2,h3,h4 { @apply font-display; text-wrap: balance; }
+}
+
+@layer components {
+  .kartu { @apply bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-card; }
+  .lbl   { @apply text-[11px] uppercase tracking-[0.06em] font-bold text-ink-3 dark:text-ink-dark-3; }
+  .hint  { @apply text-[11.5px] text-ink-3 dark:text-ink-dark-3; }
+  .num   { @apply font-mono tabular-nums text-right whitespace-nowrap; }
+  .kode  { @apply font-mono text-[12px] text-ink-2 dark:text-ink-dark-2; }
+
+  .inp {
+    @apply w-full bg-surface dark:bg-surface-dark border border-line-strong dark:border-line-dark-strong
+           rounded-lg px-3 py-1.5 text-[13.5px] text-ink dark:text-ink-dark
+           placeholder:text-ink-3 dark:placeholder:text-ink-dark-3;
+  }
+  .inp-salah { @apply border-bad dark:border-bad-dark bg-bad-soft dark:bg-bad-dark-soft; }
+
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-[13px] font-semibold
+           border border-line-strong dark:border-line-dark-strong
+           bg-surface dark:bg-surface-dark text-ink dark:text-ink-dark
+           hover:bg-surface-2 dark:hover:bg-surface-dark-2
+           disabled:opacity-45 disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-utama {
+    @apply bg-frost dark:bg-frost-dark border-frost dark:border-frost-dark
+           text-white dark:text-ground-dark hover:bg-frost-deep dark:hover:bg-frost-dark-deep;
+  }
+  .btn-bahaya { @apply text-bad dark:text-bad-dark border-bad dark:border-bad-dark
+                       hover:bg-bad-soft dark:hover:bg-bad-dark-soft; }
+  .btn-samar  { @apply border-transparent bg-transparent text-ink-2 dark:text-ink-dark-2
+                       hover:bg-surface-2 dark:hover:bg-surface-dark-2; }
+  .btn-kecil  { @apply px-2 py-1 text-[12px]; }
+
+  .pil { @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5
+                text-[11.5px] font-semibold whitespace-nowrap leading-6; }
+  .pil::before { content: ""; @apply w-1.5 h-1.5 rounded-full bg-current shrink-0; }
+  .pil-ok    { @apply bg-ok-soft text-ok dark:bg-ok-dark-soft dark:text-ok-dark; }
+  .pil-warn  { @apply bg-warn-soft text-warn dark:bg-warn-dark-soft dark:text-warn-dark; }
+  .pil-bad   { @apply bg-bad-soft text-bad dark:bg-bad-dark-soft dark:text-bad-dark; }
+  .pil-info  { @apply bg-frost-soft text-frost-deep dark:bg-frost-dark-soft dark:text-frost-dark-deep; }
+  .pil-muted { @apply bg-surface-2 text-ink-2 dark:bg-surface-dark-2 dark:text-ink-dark-2; }
+
+  .catatan { @apply border-l-[3px] rounded-r-lg px-3.5 py-2.5 text-[12.5px]
+                    border-frost bg-frost-soft text-frost-deep
+                    dark:border-frost-dark dark:bg-frost-dark-soft dark:text-frost-dark-deep; }
+  .catatan-warn { @apply border-warn bg-warn-soft text-warn
+                         dark:border-warn-dark dark:bg-warn-dark-soft dark:text-warn-dark; }
+  .catatan-bad  { @apply border-bad bg-bad-soft text-bad
+                         dark:border-bad-dark dark:bg-bad-dark-soft dark:text-bad-dark; }
+
+  .tabel-bungkus { @apply overflow-x-auto rounded-card border border-line dark:border-line-dark
+                          bg-surface dark:bg-surface-dark; }
+  .tabel { @apply w-full border-collapse min-w-[620px]; }
+  .tabel th { @apply text-left text-[10.5px] uppercase tracking-[0.08em] font-bold
+                     text-ink-3 dark:text-ink-dark-3 px-3.5 py-2.5 whitespace-nowrap
+                     bg-surface-2 dark:bg-surface-dark-2
+                     border-b border-line dark:border-line-dark; }
+  .tabel td { @apply px-3.5 py-2.5 align-top border-b border-line dark:border-line-dark text-[13px]; }
+  .tabel tbody tr:last-child td { @apply border-b-0; }
+  .baris-klik { @apply cursor-pointer hover:bg-surface-2 dark:hover:bg-surface-dark-2; }
+
+  .chip { @apply inline-block font-mono text-[11.5px] rounded px-1.5 py-0.5
+                 bg-surface-2 dark:bg-surface-dark-2 border border-line dark:border-line-dark
+                 text-ink-2 dark:text-ink-dark-2; }
+
+  /* Kertas dokumen — pratinjau isi surat */
+  .kertas {
+    @apply bg-surface dark:bg-surface-dark border border-line dark:border-line-dark rounded-card
+           px-8 py-7 text-[13px] leading-[1.85] whitespace-pre-wrap overflow-x-auto
+           text-ink dark:text-ink-dark;
+  }
+  .kertas .blank  { @apply bg-warn-soft text-warn dark:bg-warn-dark-soft dark:text-warn-dark
+                           rounded-sm px-1 font-semibold; }
+  .kertas .filled { @apply bg-frost-soft text-frost-deep dark:bg-frost-dark-soft dark:text-frost-dark-deep
+                           rounded-sm px-1; }
+  .kertas .auto   { @apply bg-ok-soft text-ok dark:bg-ok-dark-soft dark:text-ok-dark
+                           rounded-sm px-1 font-semibold; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

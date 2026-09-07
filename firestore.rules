@@ -1,0 +1,104 @@
+rules_version = '2';
+
+// ============================================================
+//  MEJA ADMIN — aturan keamanan Firestore
+//
+//  Prinsip tunggal: BROWSER TIDAK PERNAH MENULIS APA PUN.
+//  Semua perubahan lewat Netlify Function memakai Firebase Admin SDK,
+//  yang melewati aturan ini sepenuhnya. Jadi setiap koleksi di bawah
+//  ditulis `allow write: if false` — termasuk untuk Owner.
+//
+//  Kenapa tanpa pengecualian: satu jalur tulis yang melewati fungsi
+//  berarti satu perubahan yang tidak masuk jejak audit. Begitu ada satu,
+//  seluruh jejaknya tidak bisa lagi dipakai membuktikan apa pun — dan
+//  yang paling dirugikan adalah orang yang harus membuktikan dia tidak
+//  mengubah angkanya sendiri.
+//
+//  Satu-satunya dokumen yang dibuat manual di Console adalah superadmin
+//  pertama di koleksi `users`. Tanpa itu tidak ada yang bisa masuk.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function masuk() {
+      return request.auth != null;
+    }
+    function akuAda() {
+      return masuk() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function aku() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function aktif() {
+      return akuAda() && aku().aktif == true;
+    }
+    function peran() {
+      return aktif() ? aku().peran : "tamu";
+    }
+    function admin() {
+      return peran() == "superadmin" || peran() == "owner";
+    }
+    function pemeriksa() {
+      return peran() == "superadmin" || peran() == "owner" || peran() == "director";
+    }
+
+    // --- Pengguna & peran ---
+    // Semua yang sudah masuk boleh membaca daftar pengguna: nama pemohon
+    // dan approver muncul di hampir setiap layar. Tidak ada data rahasia
+    // di sini — password tidak pernah menyentuh Firestore.
+    match /users/{uid} {
+      allow read: if aktif() || request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // --- Master data ---
+    match /akun/{id}     { allow read: if aktif(); allow write: if false; }
+    match /karyawan/{id} { allow read: if aktif(); allow write: if false; }
+    match /vendor/{id}   { allow read: if aktif(); allow write: if false; }
+    match /ambang/{id}   { allow read: if aktif(); allow write: if false; }
+    match /template/{id} { allow read: if aktif(); allow write: if false; }
+
+    // --- Register nomor dokumen ---
+    // Dibaca semua orang yang sudah masuk supaya pemohon bisa memilih
+    // nomor dasar di form reimburse.
+    match /dokumen/{nomor} { allow read: if aktif(); allow write: if false; }
+
+    // Penghitung urutan nomor. TIDAK BOLEH DIBACA browser sama sekali —
+    // satu-satunya yang menyentuhnya adalah transaksi di dalam function.
+    // Kalau angkanya bisa dibaca dari klien, orang bisa menebak nomor
+    // berikutnya dan membuat dokumen tandingan di luar sistem.
+    match /counters/{id} { allow read, write: if false; }
+
+    // --- Permintaan dokumen ---
+    match /permintaan/{id} {
+      allow read: if aktif() && (admin() || resource.data.pemohonUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // --- Pengajuan reimburse ---
+    // Pemohon hanya melihat miliknya sendiri. Director & Owner melihat
+    // semua karena mereka yang menyetujui.
+    match /pengajuan/{id} {
+      allow read: if aktif() && (pemeriksa() || resource.data.pemohonUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // --- Jejak audit ---
+    // Append-only dari sisi function; dari browser hanya bisa dibaca.
+    // Pemohon perlu membacanya untuk melihat kenapa pengajuannya
+    // dikembalikan — itu haknya, bukan kemurahan hati.
+    match /events/{id} {
+      allow read: if aktif();
+      allow write: if false;
+    }
+
+    // --- Kunci periode ---
+    match /periodeLock/{bulan} { allow read: if aktif(); allow write: if false; }
+
+    // Apa pun yang tidak disebut di atas: tertutup.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA: semua rute digambar React Router, tapi /.netlify/functions/* tidak
+# boleh ikut dibelokkan — kalau ikut, panggilan API balik berupa HTML dan
+# error-nya terbaca sebagai "aksi gagal", bukan "function belum ter-deploy".
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
