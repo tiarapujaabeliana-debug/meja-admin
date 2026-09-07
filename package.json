@@ -8,11 +8,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "uji": "node uji/uji-logika.js"
+    "uji": "node uji/uji-logika.js && node uji/uji-docx.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.45.4",
-    "docx": "8.5.0",
     "firebase": "10.14.1",
     "firebase-admin": "12.6.0",
     "react": "18.3.1",

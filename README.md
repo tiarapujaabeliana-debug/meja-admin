@@ -47,12 +47,30 @@ src/lib/i18n.jsx           kamus ID/EN — tidak boleh ada teks layar di luar si
 src/lib/store.jsx          semua langganan Firestore; layar tidak query sendiri
 src/lib/api.js             satu-satunya pintu keluar untuk mengubah data
 netlify/functions/         satu berkas per modul; meng-import src/lib yang sama
-uji/uji-logika.js          uji rumus dengan data sintetis (npm run uji)
+netlify/functions/_lib/docx.js   penulis .docx tanpa dependensi (lihat catatan di bawah)
+uji/uji-logika.js          uji rumus dengan data sintetis
+uji/uji-docx.js            uji susunan ZIP & XML berkas .docx
+uji/periksa-docx.py        membuka berkasnya dengan pembaca docx LAIN
 firestore.rules            tempel ke Firebase Console
 ```
 
 Netlify Function meng-import `src/lib/*.js` **langsung**, bukan menyalinnya.
 Itu yang menjamin server dan layar tidak pernah memakai rumus berbeda.
+
+## Kenapa .docx ditulis sendiri
+
+Paket `docx` v8 memakai `exports` bersyarat: `main` menunjuk
+`build/index.umd.js`, sementara runtime Lambda meminta jalur `require`
+yaitu `build/index.cjs`. Penyalin berkas Netlify menelusuri `main`, jadi
+`index.cjs` tidak pernah ikut ke dalam zip fungsinya — dan fungsinya mati
+dengan `Runtime.ImportModuleError` sebelum satu baris kode kita jalan
+(7 Sep 2026, di produksi).
+
+Itu bisa ditambal lewat setelan bundler Netlify, tapi tambalan itu baru
+ketahuan berhasil setelah deploy. `netlify/functions/_lib/docx.js` bisa
+diuji sepenuhnya di komputer mana pun, dan menghapus 7,7 MB dependensi
+sekalian. Sebuah .docx hanya ZIP berisi beberapa XML; Node sudah punya
+zlib.
 
 ## Perintah
 
