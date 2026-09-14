@@ -11,7 +11,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useBahasa } from "../lib/i18n.jsx";
-import { useSesi, ADMIN } from "../auth/useAuth.jsx";
+import { useSesi, ADMIN, LUAS } from "../auth/useAuth.jsx";
 import { useData } from "../lib/store.jsx";
 import { periodeDari } from "../lib/reimburseMeta.js";
 
@@ -34,6 +34,8 @@ const IKON = {
   akun: "M3 5h14M3 10h14M3 15h14M7 3v14",
   kebijakan: "M10 3l6 3v5c0 4-2.6 6.4-6 8-3.4-1.6-6-4-6-8V6z",
   pengguna: "M10 10a3 3 0 100-6 3 3 0 000 6zM4 17c0-3 2.7-5 6-5s6 2 6 5",
+  pembayaran: "M3 6h14v9H3zM3 9h14M6 13h3",
+  rekap: "M4 16V9M9 16V4M14 16v-6",
 };
 
 function gantiTema(gelap) {
@@ -53,15 +55,23 @@ export default function Shell({ children }) {
   const [bukaMenu, setBukaMenu] = useState(false);
 
   const admin = ADMIN.includes(peran);
+  const luas = LUAS.includes(peran);
 
   // Lencana = jumlah yang benar-benar menunggu ORANG INI, bukan jumlah total.
   const antre =
     pengajuan.filter((p) =>
       (peran === "superadmin" && p.status === "diajukan") ||
-      (peran === "director" && p.status === "menunggu_director") ||
+      (peran === "director" && (p.status === "menunggu_director" || p.status === "disetujui")) ||
       (peran === "owner" && p.status === "menunggu_owner") ||
+      (peran === "finance" && p.status === "menunggu_pembayaran") ||
       (p.pemohonUid === profil?.uid && p.status === "dikembalikan")).length
     + (admin ? permintaan.filter((r) => r.status === "diminta").length : 0);
+
+  // Lencana khusus menu Pembayaran: cuma yang benar-benar butuh aksi
+  // Director/Finance saat ini, bukan seluruh isi antrean bayar.
+  const antrePembayaran = pengajuan.filter((p) =>
+    (peran === "director" && p.status === "disetujui") ||
+    (peran === "finance" && p.status === "menunggu_pembayaran")).length;
 
   const grup = [
     { g: t("gHarian"), item: [
@@ -69,6 +79,8 @@ export default function Shell({ children }) {
       { ke: "/reimburse", ikon: "reimburse", label: t("nReimburse") },
       { ke: "/permintaan", ikon: "permintaan", label: t("nPermintaan") },
       { ke: "/dokumen", ikon: "terbit", label: t("nTerbit") },
+      ...(luas ? [{ ke: "/pembayaran", ikon: "pembayaran", label: t("nPembayaran"), lencana: antrePembayaran }] : []),
+      ...(luas ? [{ ke: "/reimburse-rekap", ikon: "rekap", label: t("nRekap") }] : []),
     ] },
     { g: t("gRujukan"), item: [
       { ke: "/aturan", ikon: "aturan", label: t("nAturan") },
