@@ -17,7 +17,11 @@ function baca(teks) {
   const baris = teks.split("\n").map((s) => s.trim()).filter(Boolean);
   const out = [];
   for (const b of baris) {
-    const sel = b.split(/[;,\t]/).map((s) => s.trim().replace(/^"|"$/g, ""));
+    // Pemisah TITIK KOMA atau tab saja — bukan koma. Nama akun asli dari
+    // Mekari kadang mengandung koma sendiri (mis. "Fuel, Toll and Parking"),
+    // dan kalau koma juga dianggap pemisah, nama itu ikut terpotong jadi
+    // dua kolom yang salah.
+    const sel = b.split(/[;\t]/).map((s) => s.trim().replace(/^"|"$/g, ""));
     if (sel.length < 2) continue;
     const [kode, nama, grup, namaEn] = sel;
     if (!kode || /^(kode|code|account)/i.test(kode)) continue; // lewati baris judul
@@ -59,10 +63,10 @@ export default function Akun() {
       <Bagian judul={t("akunImpor")} sub={t("akunImporPetunjuk")}>
         <div className="kartu p-4 grid gap-3.5">
           <Isian label="CSV" htmlFor="csv"
-            hint="Urutan kolom: kode, nama, kelompok, nama Inggris (opsional). Pemisah koma, titik koma, atau tab.">
+            hint="Urutan kolom: kode, nama, kelompok, nama Inggris (opsional). Pemisah titik koma atau tab (bukan koma — supaya nama akun yang mengandung koma tidak ikut terpotong).">
             <textarea id="csv" rows={6} value={teks} onChange={(e) => setTeks(e.target.value)}
               className="inp font-mono text-[12.5px] resize-y"
-              placeholder={"6-1001, Beban Perjalanan Dinas, Beban Operasional\n6-1101, Beban ATK, Beban Kantor"} />
+              placeholder={"6-1001; Beban Perjalanan Dinas; Beban Operasional\n6-1101; Beban ATK; Beban Kantor"} />
           </Isian>
           {pratinjau.length > 0 && (
             <div className="hint">{pratinjau.length} baris terbaca. Baris pertama: <span className="chip">
