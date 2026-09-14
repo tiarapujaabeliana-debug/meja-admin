@@ -15,7 +15,7 @@ import {
   collection, onSnapshot, query, orderBy, limit, where,
 } from "firebase/firestore";
 import { db } from "./firebase.js";
-import { useSesi, PEMERIKSA } from "../auth/useAuth.jsx";
+import { useSesi, LUAS } from "../auth/useAuth.jsx";
 
 const Ctx = createContext(null);
 const BATAS = 400;
@@ -40,7 +40,7 @@ function pakaiKoleksi(nama, aktif, kueri) {
 export function PenyediaData({ children }) {
   const { profil, uid, peran } = useSesi();
   const masuk = Boolean(profil && profil.aktif !== false);
-  const pemeriksa = PEMERIKSA.includes(peran);
+  const luas = LUAS.includes(peran);
 
   const akun     = pakaiKoleksi("akun", masuk);
   const karyawan = pakaiKoleksi("karyawan", masuk);
@@ -53,16 +53,23 @@ export function PenyediaData({ children }) {
   /* Pemohon hanya boleh membaca miliknya sendiri — bukan cuma disaring di
      layar, tapi memang tidak diminta ke server. firestore.rules akan
      menolak query yang lebih luas, dan menolaknya sebagai galat, bukan
-     sebagai daftar kosong yang membingungkan. */
-  const pengajuan = pakaiKoleksi("pengajuan", masuk, (c) => pemeriksa
+     sebagai daftar kosong yang membingungkan. Finance ikut "luas" karena
+     dia perlu melihat semua pengajuan untuk menjalankan pembayaran,
+     walau dia tidak ikut memeriksa/menyetujui. */
+  const pengajuan = pakaiKoleksi("pengajuan", masuk, (c) => luas
     ? query(c, orderBy("dibuat", "desc"), limit(BATAS))
     : query(c, where("pemohonUid", "==", uid), orderBy("dibuat", "desc"), limit(BATAS)));
 
-  const permintaan = pakaiKoleksi("permintaan", masuk, (c) => pemeriksa
+  const permintaan = pakaiKoleksi("permintaan", masuk, (c) => luas
     ? query(c, orderBy("dibuat", "desc"), limit(BATAS))
     : query(c, where("pemohonUid", "==", uid), orderBy("dibuat", "desc"), limit(BATAS)));
 
   const events = pakaiKoleksi("events", masuk, (c) => query(c, orderBy("waktu", "desc"), limit(BATAS)));
+
+  // Rekening tujuan transfer tiap orang — sengaja HANYA dimuat untuk peran
+  // yang berhak lihat (bukan koleksi kecil biasa seperti karyawan/vendor),
+  // karena isinya nomor rekening pribadi. Lihat firestore.rules.
+  const rekening = pakaiKoleksi("rekening", masuk && luas);
 
   /** Versi terbaru tiap template — yang dipakai saat menerbitkan baru. */
   const templateAktif = useMemo(() => {
@@ -79,20 +86,21 @@ export function PenyediaData({ children }) {
 
   const master = { karyawan: karyawan.data, vendor: vendor.data };
 
-  const galatIzin = [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, events]
+  const galatIzin = [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, events, rekening]
     .map((x) => x.galat).find(Boolean) || null;
 
   const semuaSiap = masuk
-    ? [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan].every((x) => x.siap)
+    ? [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, rekening].every((x) => x.siap)
     : true;
 
   const nilai = {
     akun: akun.data, karyawan: karyawan.data, vendor: vendor.data,
     ambang: ambang.data, template: template.data, templateAktif, cariTemplate,
     users: users.data, dokumen: dokumen.data, pengajuan: pengajuan.data,
-    permintaan: permintaan.data, events: events.data,
+    permintaan: permintaan.data, events: events.data, rekening: rekening.data,
     master, semuaSiap, galatIzin,
     namaUser: (u) => users.data.find((x) => x.id === u)?.nama || "—",
+    rekeningUser: (u) => rekening.data.find((x) => x.id === u) || null,
     jejakUntuk: (ref) => events.data.filter((e) => e.ref === ref),
   };
 
