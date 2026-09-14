@@ -19,7 +19,7 @@ export default function TabelPengajuan({ baris, kosongJudul, kosongSub }) {
         <tr key={p.no} className="baris-klik" onClick={() => nav(`/reimburse/${p.no}`)}>
           <td>
             <span className="kode">{p.no}</span>
-            {p.dokumen && <div className="hint font-mono">{p.dokumen}</div>}
+            {p.noInvoice && <div className="hint font-mono">{p.noInvoice}</div>}
           </td>
           <td>{p.pemohonNama}</td>
           <td className="max-w-[260px]">{p.keperluan}</td>
