@@ -223,4 +223,3 @@ function TombolLampiran({ jalur, nama }) {
       {sibuk ? "…" : (nama || "lampiran")}
     </button>
   );
-}
