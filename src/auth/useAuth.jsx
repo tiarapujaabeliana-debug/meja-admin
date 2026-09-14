@@ -68,4 +68,9 @@ export function useSesi() {
 
 export const ADMIN = ["superadmin", "owner"];
 export const PEMERIKSA = ["superadmin", "owner", "director"];
+// Peran yang boleh melihat SELURUH data reimburse (bukan cuma miliknya
+// sendiri) — dipakai untuk gerbang query di store.jsx dan untuk menu
+// Rekap/Pembayaran. Finance tidak ikut memeriksa/menyetujui pengajuan,
+// tapi tetap perlu melihat semuanya untuk menjalankan pembayaran.
+export const LUAS = [...PEMERIKSA, "finance"];
 export const bolehAdmin = (peran) => ADMIN.includes(peran);
