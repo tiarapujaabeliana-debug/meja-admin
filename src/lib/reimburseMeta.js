@@ -11,10 +11,11 @@
 
 export const STATUS = [
   "draft", "diajukan", "menunggu_director", "menunggu_owner",
-  "disetujui", "dikembalikan", "dibatalkan",
+  "disetujui", "menunggu_pembayaran", "dibayar", "dikembalikan", "dibatalkan",
 ];
 
-export const STATUS_FINAL = ["disetujui", "dibatalkan"];
+// "disetujui" BUKAN LAGI status akhir — ada tahap pembayaran setelahnya.
+export const STATUS_FINAL = ["dibayar", "dibatalkan"];
 
 /** Warna semantik, bukan warna aksen. Dipakai komponen Pill. */
 export const STATUS_NADA = {
@@ -22,7 +23,9 @@ export const STATUS_NADA = {
   diajukan: "info",
   menunggu_director: "warn",
   menunggu_owner: "warn",
-  disetujui: "ok",
+  disetujui: "info",
+  menunggu_pembayaran: "warn",
+  dibayar: "ok",
   dikembalikan: "bad",
   dibatalkan: "muted",
 };
@@ -98,8 +101,8 @@ export function jalurPersetujuan(pengajuan, daftarAmbang) {
   const lewat = amb && totalPengajuan(pengajuan) > Number(amb.nilai);
   return {
     langkah: lewat
-      ? ["diajukan", "menunggu_director", "menunggu_owner", "disetujui"]
-      : ["diajukan", "menunggu_director", "disetujui"],
+      ? ["diajukan", "menunggu_director", "menunggu_owner", "disetujui", "menunggu_pembayaran", "dibayar"]
+      : ["diajukan", "menunggu_director", "disetujui", "menunggu_pembayaran", "dibayar"],
     lewatAmbang: !!lewat,
     ambang: amb,
   };
@@ -127,6 +130,12 @@ export function aksiTersedia(pengajuan, peran, uid) {
     out.push("approve", "return");
   } else if (p.status === "menunggu_owner" && peran === "owner") {
     out.push("approve", "return");
+  } else if (p.status === "disetujui" && peran === "director") {
+    // Director melepas pengajuan yang sudah disetujui ke antrean "untuk
+    // dibayar" — pintu terakhir sebelum uang beneran keluar.
+    out.push("antriBayar");
+  } else if (p.status === "menunggu_pembayaran" && peran === "finance") {
+    out.push("bayar");
   }
   if (peran === "superadmin" && !STATUS_FINAL.includes(p.status)) out.push("void");
   return out;
@@ -146,6 +155,11 @@ export const AKSI_BUTUH_ALASAN = ["return", "void"];
 export function validasiPengajuan(draft, akunSah) {
   const e = [];
   if (!String(draft.keperluan || "").trim()) e.push({ k: "keperluan" });
+  // Tanggal di INVOICE-nya sendiri — boleh hari apa saja (nota bisa dari
+  // beberapa hari lalu). Ini beda dari `dibuat`, stempel jam server yang
+  // menunjukkan kapan pengajuan ini benar-benar dikirim, dan tidak pernah
+  // bisa diketik manual. Dua-duanya ditampilkan; tidak saling menimpa.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(draft.tanggalInvoice || ""))) e.push({ k: "tanggalInvoice" });
   const lines = draft.lines || [];
   if (lines.length === 0) e.push({ k: "noline" });
   lines.forEach((l, i) => {
@@ -155,8 +169,10 @@ export function validasiPengajuan(draft, akunSah) {
     else if (akunSah && !akunSah.includes(l.akun)) e.push({ k: "akunAsing", n, v: l.akun });
     if (!(Number(l.qty) > 0)) e.push({ k: "qty", n });
     if (!(Number(l.harga) > 0)) e.push({ k: "harga", n });
-    if (!l.file) e.push({ k: "file", n });
   });
+  // Satu lampiran untuk seluruh pengajuan, bukan satu per baris — supaya
+  // pemeriksa tidak harus membuka banyak berkas untuk satu pengajuan.
+  if (!draft.lampiran) e.push({ k: "lampiran" });
   return e;
 }
 
