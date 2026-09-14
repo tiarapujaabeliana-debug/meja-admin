@@ -13,7 +13,7 @@ import {
   STATUS_NADA, barisJurnal, keCsv, rentangPeriode,
 } from "../lib/reimburseMeta.js";
 import { panggil } from "../lib/api.js";
-import { slugNomor, unduhTeks } from "../lib/nav.js";
+import { unduhTeks } from "../lib/nav.js";
 
 const LABEL_AKSI = {
   id: { submit: "mengirim pengajuan", verify: "memverifikasi & meneruskan", approve: "menyetujui",
@@ -25,7 +25,7 @@ const LABEL_AKSI = {
 export default function ReimburseDetail() {
   const { no } = useParams();
   const { t, lang } = useBahasa();
-  const { pengajuan, ambang, akun, dokumen, jejakUntuk } = useData();
+  const { pengajuan, ambang, akun, jejakUntuk } = useData();
   const { peran, uid } = useSesi();
   const pesan = usePesan();
   const nav = useNavigate();
@@ -44,11 +44,11 @@ export default function ReimburseDetail() {
   const { langkah, lewatAmbang, ambang: ambPakai } = jalurPersetujuan(p, ambang);
   const boleh = aksiTersedia(p, peran, uid);
   const jejak = jejakUntuk(p.no);
-  const dok = p.dokumen ? dokumen.find((d) => d.nomor === p.dokumen) : null;
   const rentang = rentangPeriode(p.periode);
 
   const PEMEGANG = {
-    diajukan: "Superadmin", menunggu_director: "Director", menunggu_owner: "Owner", disetujui: "—",
+    diajukan: "Superadmin", menunggu_director: "Director", menunggu_owner: "Owner", disetujui: "Director",
+    menunggu_pembayaran: "Finance", dibayar: "—",
   };
   const idxKini = langkah.indexOf(p.status);
 
@@ -59,6 +59,7 @@ export default function ReimburseDetail() {
       pesan({
         verify: t("okVerifikasi"), approve: t("okSetuju"),
         return: t("okKembali"), void: t("okBatal"), submit: t("okKirim"),
+        antriBayar: t("okAntriBayar"), bayar: t("okBayar"),
       }[aksi] || `Status → ${t("st_" + r.status)}`);
       setMinta(null);
     } catch (e) {
@@ -75,9 +76,10 @@ export default function ReimburseDetail() {
   const LABEL_TOMBOL = {
     submit: p.status === "dikembalikan" ? t("aAjukanUlang") : t("aKirim"),
     verify: t("aVerifikasi"), approve: t("aSetujui"), return: t("aKembalikan"), void: t("aBatalkan"),
+    antriBayar: t("aAntriBayar"), bayar: t("aBayar"),
   };
   const GAYA = { submit: "btn-utama", verify: "btn-utama", approve: "btn-utama",
-    return: "btn-bahaya", void: "btn-samar" };
+    return: "btn-bahaya", void: "btn-samar", antriBayar: "btn-utama", bayar: "btn-utama" };
 
   return (
     <>
@@ -96,7 +98,6 @@ export default function ReimburseDetail() {
         <div className="mb-3.5"><Catatan nada="warn">
           {t("catatanBatal")}
           {p.alasanBatal && <div className="mt-1 font-semibold">{p.alasanBatal}</div>}
-          {p.dokumen && <div className="mt-1.5">{t("catatanBatalDok")}</div>}
         </Catatan></div>
       )}
 
@@ -133,13 +134,14 @@ export default function ReimburseDetail() {
           </KvBaris>
         </Kv></Kartu>
         <Kartu className="p-4"><Kv>
+          <KvBaris k={t("fTanggalInvoice")}><span className="font-mono">{p.tanggalInvoice || "—"}</span></KvBaris>
+          <KvBaris k={t("fDiajukanPada")}><span className="font-mono">{p.dibuat}</span></KvBaris>
           <KvBaris k={t("fDokDasar")}>
-            {dok
-              ? <Link className="font-mono font-semibold underline underline-offset-2"
-                to={`/dokumen/${slugNomor(dok.nomor)}`}>{dok.nomor}</Link>
+            {p.noInvoice
+              ? <span className="font-mono font-semibold">{p.noInvoice}</span>
               : "—"}
-            {dok && <div className="hint">{dok.perihal}</div>}
           </KvBaris>
+          <KvBaris k={t("kLampiran")}><TombolLampiran jalur={p.lampiran} nama={p.lampiranNama} /></KvBaris>
           {p.catatan && <KvBaris k={t("fCatatan")}>{p.catatan}</KvBaris>}
         </Kv></Kartu>
       </div>
@@ -147,7 +149,7 @@ export default function ReimburseDetail() {
       <Bagian judul={t("fRincian")}>
         <Tabel kolom={[
           { t: t("kDesk") }, { t: t("kAkun") }, { t: t("kQty"), num: true },
-          { t: t("kHarga"), num: true }, { t: t("kSubtotal"), num: true }, { t: t("kLampiran") },
+          { t: t("kHarga"), num: true }, { t: t("kSubtotal"), num: true },
         ]}>
           {p.lines.map((l, i) => {
             const a = akun.find((x) => x.id === l.akun);
@@ -158,14 +160,12 @@ export default function ReimburseDetail() {
                 <td className="num">{l.qty} {l.unit}</td>
                 <td className="num">{rupiah(l.harga)}</td>
                 <td className="num">{rupiah(l.qty * l.harga)}</td>
-                <td><TombolLampiran jalur={l.file} nama={l.fileNama} /></td>
               </tr>
             );
           })}
           <tr>
             <td colSpan={4} className="text-right font-bold">{t("rbTotal")}</td>
             <td className="num font-bold">{rupiah(total)}</td>
-            <td />
           </tr>
         </Tabel>
       </Bagian>
@@ -223,3 +223,4 @@ function TombolLampiran({ jalur, nama }) {
       {sibuk ? "…" : (nama || "lampiran")}
     </button>
   );
+}
