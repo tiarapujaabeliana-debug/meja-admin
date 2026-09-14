@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { PenyediaSesi, useSesi, ADMIN } from "./auth/useAuth.jsx";
+import { PenyediaSesi, useSesi, ADMIN, LUAS } from "./auth/useAuth.jsx";
 import { PenyediaData, useData } from "./lib/store.jsx";
 import { PenyediaPesan, Memuat, Catatan } from "./components/ui.jsx";
 import Shell, { pulihkanTema } from "./components/Shell.jsx";
@@ -23,6 +23,8 @@ import Kebijakan from "./pages/Kebijakan.jsx";
 import Pengguna from "./pages/Pengguna.jsx";
 import Aturan from "./pages/Aturan.jsx";
 import Asumsi from "./pages/Asumsi.jsx";
+import Pembayaran from "./pages/Pembayaran.jsx";
+import ReimburseRekap from "./pages/ReimburseRekap.jsx";
 
 pulihkanTema();
 
@@ -34,6 +36,21 @@ function HanyaAdmin({ children }) {
     return (
       <Catatan nada="bad">
         {t("belumDibuat")} — halaman ini hanya untuk Superadmin dan Owner.
+        Kalau peranmu seharusnya berbeda, minta superadmin mengubahnya di menu Pengguna &amp; peran.
+      </Catatan>
+    );
+  }
+  return children;
+}
+
+/** Halaman yang butuh visibilitas penuh reimburse: superadmin/owner/director/finance. */
+function HanyaLuas({ children }) {
+  const { peran } = useSesi();
+  const { t } = useBahasa();
+  if (!LUAS.includes(peran)) {
+    return (
+      <Catatan nada="bad">
+        {t("belumDibuat")} — halaman ini hanya untuk Superadmin, Owner, Director, dan Finance.
         Kalau peranmu seharusnya berbeda, minta superadmin mengubahnya di menu Pengguna &amp; peran.
       </Catatan>
     );
@@ -99,6 +116,9 @@ function PenjagaData() {
 
         <Route path="/aturan" element={<Aturan />} />
         <Route path="/asumsi" element={<Asumsi />} />
+
+        <Route path="/pembayaran" element={<HanyaLuas><Pembayaran /></HanyaLuas>} />
+        <Route path="/reimburse-rekap" element={<HanyaLuas><ReimburseRekap /></HanyaLuas>} />
 
         <Route path="/setelan/template" element={<HanyaAdmin><Template /></HanyaAdmin>} />
         <Route path="/setelan/template/:tid" element={<HanyaAdmin><TemplateEdit /></HanyaAdmin>} />
