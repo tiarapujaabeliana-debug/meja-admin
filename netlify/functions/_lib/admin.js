@@ -128,7 +128,7 @@ export function handlerAman(jalankan, { perlu } = {}) {
 }
 
 export function namaPeran(p) {
-  return { superadmin: "Superadmin", director: "Director", owner: "Owner", pemohon: "Pemohon" }[p] || p;
+  return { superadmin: "Superadmin", director: "Director", owner: "Owner", pemohon: "Pemohon", finance: "Finance" }[p] || p;
 }
 
 /** Penolakan yang disengaja, dengan pesan yang menyebut langkah perbaikannya. */

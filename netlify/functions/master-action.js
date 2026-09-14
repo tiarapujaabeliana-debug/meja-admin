@@ -19,7 +19,7 @@
  */
 import { handlerAman, oke, salah, catat, stempelServer, tanggalServer } from "./_lib/admin.js";
 
-const PERAN_SAH = ["pemohon", "superadmin", "director", "owner"];
+const PERAN_SAH = ["pemohon", "superadmin", "director", "owner", "finance"];
 
 const bersih = (v) => String(v ?? "").trim();
 
@@ -172,6 +172,20 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
         ke: `${peran}${muatan.aktif === false ? " (nonaktif)" : ""}`,
         aktor: aku, tambahan: { tentang: nama },
       });
+
+      // Rekening tujuan transfer disimpan di koleksi terpisah (lihat
+      // firestore.rules) — bukan sekadar rapi, tapi supaya nomor
+      // rekening tidak ikut kebaca semua pengguna aktif seperti field
+      // lain di users/. Kosongkan field-nya kalau memang belum diisi;
+      // jangan menimpa dengan string kosong yang terlihat seperti data.
+      const bankNama = bersih(muatan.bankNama);
+      const bankNorek = bersih(muatan.bankNorek);
+      const bankAtasNama = bersih(muatan.bankAtasNama);
+      if (bankNama || bankNorek || bankAtasNama) {
+        tx.set(db.collection("rekening").doc(uid), {
+          bankNama, bankNorek, bankAtasNama, diubah: stempelServer(),
+        }, { merge: true });
+      }
     });
 
     return oke({ pesan: `${nama} tersimpan sebagai ${peran}.` });

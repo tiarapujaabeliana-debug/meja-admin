@@ -24,7 +24,8 @@ const PESAN_VALIDASI = {
   akunAsing: (e) => `Baris ${e.n}: akun ${e.v} tidak ada di daftar akun jurnal. Pilih ulang dari dropdown.`,
   qty: (e) => `Baris ${e.n}: jumlah harus lebih dari 0.`,
   harga: (e) => `Baris ${e.n}: harga satuan harus lebih dari 0.`,
-  file: (e) => `Baris ${e.n}: lampiran invoice belum ada.`,
+  lampiran: () => "Lampiran bukti belum diunggah.",
+  tanggalInvoice: () => "Tanggal invoice belum diisi atau tidak berbentuk YYYY-MM-DD.",
 };
 
 /** Nomor RB berurut per tahun, dialokasikan di dalam transaksi. */
@@ -61,25 +62,7 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
     const periode = periodeDari(tanggalServer());
     await pastikanPeriodeTerbuka(db, periode);
 
-    const nomorDok = draft.dokumen || null;
-
     const hasil = await db.runTransaction(async (tx) => {
-      /* Dibaca ulang DI DALAM transaksi. Dropdown yang digambar semenit
-         lalu bisa saja sudah basi karena orang lain memakai nomor itu
-         duluan; memeriksanya di klien saja berarti dua orang yang menekan
-         tombol bersamaan sama-sama berhasil. */
-      let dokSnap = null;
-      if (nomorDok) {
-        const dokRef = db.collection("dokumen").doc(nomorDok);
-        dokSnap = await tx.get(dokRef);
-        if (!dokSnap.exists) throw salah(`Dokumen ${nomorDok} tidak ditemukan di register.`);
-        const d = dokSnap.data();
-        if (d.batal) throw salah(`Dokumen ${nomorDok} sudah dibatalkan, jadi tidak bisa dipakai sebagai dasar.`);
-        if (d.pakai) throw salah(
-          `Dokumen ${nomorDok} sudah dipakai oleh ${d.pakai.ref}. Satu nomor hanya bisa dipakai ` +
-          `satu kali. Pilih nomor lain, atau terbitkan dokumen baru.`, 409);
-      }
-
       const no = await nomorBaru(tx, db, new Date().getFullYear());
       const ref = db.collection("pengajuan").doc(no);
 
@@ -91,15 +74,16 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
         catatan: String(draft.catatan || "").trim(),
         status: "diajukan",
         periode,
-        dokumen: nomorDok,
+        noInvoice: draft.noInvoice ? String(draft.noInvoice).trim() : null,
+        tanggalInvoice: String(draft.tanggalInvoice).slice(0, 10),
+        lampiran: draft.lampiran || null,     // jalur di Supabase Storage, bukan URL
+        lampiranNama: draft.lampiranNama || "",
         lines: (draft.lines || []).map((l) => ({
           desc: String(l.desc).trim(),
           akun: l.akun,
           qty: Number(l.qty),
           unit: String(l.unit || "").trim(),
           harga: Number(l.harga),
-          file: l.file,          // jalur di Supabase Storage, bukan URL
-          fileNama: l.fileNama || "",
         })),
         dibuat: waktu,
         diubah: waktu,
@@ -107,12 +91,6 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
       data.total = totalPengajuan(data);
 
       tx.set(ref, data);
-      if (nomorDok) {
-        tx.update(db.collection("dokumen").doc(nomorDok), {
-          pakai: { jenis: "reimburse", ref: no, waktu },
-        });
-        catat(tx, db, { ref: nomorDok, aksi: "tempel", dari: "bebas", ke: `terpakai — ${no}`, aktor: aku });
-      }
       catat(tx, db, { ref: no, aksi: "submit", dari: "draft", ke: "diajukan", aktor: aku });
       return { no, total: data.total };
     });
@@ -123,7 +101,7 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
   /* ---------------------------------------------------------------
      LANGKAH — verify / approve / return / void
      --------------------------------------------------------------- */
-  const LANGKAH = ["verify", "approve", "return", "void", "submit"];
+  const LANGKAH = ["verify", "approve", "return", "void", "submit", "antriBayar", "bayar"];
   if (!LANGKAH.includes(aksi)) throw salah(`Aksi "${aksi}" tidak dikenal.`);
 
   const no = muatan.no;
@@ -184,6 +162,18 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
          merepotkan daripada register yang bolong. */
       patch.status = "dibatalkan";
       patch.alasanBatal = alasan;
+    } else if (aksi === "antriBayar") {
+      // Director melepas pengajuan yang sudah disetujui ke antrean
+      // pembayaran. Ini pintu terakhir sebelum Finance melihatnya —
+      // sengaja tetap manual, bukan otomatis begitu "disetujui", supaya
+      // ada satu orang lagi yang melihatnya sebelum uang beneran keluar.
+      patch.status = "menunggu_pembayaran";
+    } else if (aksi === "bayar") {
+      // Finance menandai sudah ditransfer. Tidak ada tombol "batalkan
+      // pembayaran" — begitu ditandai lunas, itu final, sama seperti
+      // nomor dokumen yang sudah keluar tidak pernah kembali ke kolam.
+      patch.status = "dibayar";
+      patch.dibayarOleh = aku.nama || aku.email;
     }
 
     tx.update(ref, patch);
@@ -192,4 +182,4 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
   });
 
   return oke(hasil);
-}, { perlu: ["pemohon", "superadmin", "director", "owner"] });
+}, { perlu: ["pemohon", "superadmin", "director", "owner", "finance"] });
