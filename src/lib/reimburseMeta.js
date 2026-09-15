@@ -152,6 +152,8 @@ export const AKSI_BUTUH_ALASAN = ["return", "void"];
    `wajib` di sini BENAR-BENAR diperiksa — bukan cuma dipakai
    menggambar tanda bintang di layar.
    ------------------------------------------------------------------ */
+export const JENIS_VENDOR = ["karyawan", "pihak_ketiga"];
+
 export function validasiPengajuan(draft, akunSah) {
   const e = [];
   if (!String(draft.keperluan || "").trim()) e.push({ k: "keperluan" });
@@ -160,6 +162,10 @@ export function validasiPengajuan(draft, akunSah) {
   // menunjukkan kapan pengajuan ini benar-benar dikirim, dan tidak pernah
   // bisa diketik manual. Dua-duanya ditampilkan; tidak saling menimpa.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(draft.tanggalInvoice || ""))) e.push({ k: "tanggalInvoice" });
+  // Nomor invoice WAJIB diisi — kalau notanya memang tidak punya nomor,
+  // pemohon mengisi "-" sendiri. Itu keputusan sadar, bukan dibolehkan
+  // kosong lalu ditebak di pembukuan nanti.
+  if (!String(draft.noInvoice || "").trim()) e.push({ k: "noInvoice" });
   const lines = draft.lines || [];
   if (lines.length === 0) e.push({ k: "noline" });
   lines.forEach((l, i) => {
@@ -170,9 +176,17 @@ export function validasiPengajuan(draft, akunSah) {
     if (!(Number(l.qty) > 0)) e.push({ k: "qty", n });
     if (!(Number(l.harga) > 0)) e.push({ k: "harga", n });
   });
-  // Satu lampiran untuk seluruh pengajuan, bukan satu per baris — supaya
-  // pemeriksa tidak harus membuka banyak berkas untuk satu pengajuan.
-  if (!draft.lampiran) e.push({ k: "lampiran" });
+  // Lampiran boleh lebih dari satu berkas untuk satu pengajuan (nota bisa
+  // beberapa halaman/foto) — makanya diperiksa sebagai DAFTAR, bukan satu
+  // jalur tunggal seperti sebelumnya.
+  if (!Array.isArray(draft.lampiranList) || draft.lampiranList.length === 0) e.push({ k: "lampiran" });
+  // Rekening tujuan transfer reimburse-nya sendiri — Finance tidak bisa
+  // menjalankan pembayaran tanpa tahu mau ditransfer ke mana.
+  const rt = draft.rekeningTujuan || {};
+  if (!JENIS_VENDOR.includes(rt.jenisVendor)) e.push({ k: "rtJenis" });
+  if (!String(rt.nama || "").trim()) e.push({ k: "rtNama" });
+  if (!String(rt.bank || "").trim()) e.push({ k: "rtBank" });
+  if (!String(rt.norek || "").trim()) e.push({ k: "rtNorek" });
   return e;
 }
 

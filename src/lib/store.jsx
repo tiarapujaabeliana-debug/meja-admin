@@ -66,10 +66,13 @@ export function PenyediaData({ children }) {
 
   const events = pakaiKoleksi("events", masuk, (c) => query(c, orderBy("waktu", "desc"), limit(BATAS)));
 
-  // Rekening tujuan transfer tiap orang — sengaja HANYA dimuat untuk peran
-  // yang berhak lihat (bukan koleksi kecil biasa seperti karyawan/vendor),
-  // karena isinya nomor rekening pribadi. Lihat firestore.rules.
-  const rekening = pakaiKoleksi("rekening", masuk && luas);
+  // Rekening tujuan reimburse — daftar bersama (nama, bank, nomor rekening)
+  // yang dipilih ulang atau ditambah tiap kali mengajukan, supaya orang
+  // tidak perlu ketik ulang rekening yang sama tiap bulan. Koleksi kecil
+  // seperti karyawan/vendor: dimuat untuk SEMUA pengguna yang sudah masuk,
+  // bukan cuma peran luas — itu yang diminta: siapa pun boleh melihat dan
+  // memilih dari daftar yang sudah pernah diinput orang lain.
+  const rekeningTujuan = pakaiKoleksi("rekeningTujuan", masuk);
 
   /** Versi terbaru tiap template — yang dipakai saat menerbitkan baru. */
   const templateAktif = useMemo(() => {
@@ -86,21 +89,20 @@ export function PenyediaData({ children }) {
 
   const master = { karyawan: karyawan.data, vendor: vendor.data };
 
-  const galatIzin = [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, events, rekening]
+  const galatIzin = [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, events, rekeningTujuan]
     .map((x) => x.galat).find(Boolean) || null;
 
   const semuaSiap = masuk
-    ? [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, rekening].every((x) => x.siap)
+    ? [akun, karyawan, vendor, ambang, template, users, dokumen, pengajuan, permintaan, rekeningTujuan].every((x) => x.siap)
     : true;
 
   const nilai = {
     akun: akun.data, karyawan: karyawan.data, vendor: vendor.data,
     ambang: ambang.data, template: template.data, templateAktif, cariTemplate,
     users: users.data, dokumen: dokumen.data, pengajuan: pengajuan.data,
-    permintaan: permintaan.data, events: events.data, rekening: rekening.data,
+    permintaan: permintaan.data, events: events.data, rekeningTujuan: rekeningTujuan.data,
     master, semuaSiap, galatIzin,
     namaUser: (u) => users.data.find((x) => x.id === u)?.nama || "—",
-    rekeningUser: (u) => rekening.data.find((x) => x.id === u) || null,
     jejakUntuk: (ref) => events.data.filter((e) => e.ref === ref),
   };
 
