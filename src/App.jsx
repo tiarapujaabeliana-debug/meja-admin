@@ -25,6 +25,7 @@ import Aturan from "./pages/Aturan.jsx";
 import Asumsi from "./pages/Asumsi.jsx";
 import Pembayaran from "./pages/Pembayaran.jsx";
 import ReimburseRekap from "./pages/ReimburseRekap.jsx";
+import ArsipInvoice from "./pages/ArsipInvoice.jsx";
 
 pulihkanTema();
 
@@ -51,6 +52,23 @@ function HanyaLuas({ children }) {
     return (
       <Catatan nada="bad">
         {t("belumDibuat")} — halaman ini hanya untuk Superadmin, Owner, Director, dan Finance.
+        Kalau peranmu seharusnya berbeda, minta superadmin mengubahnya di menu Pengguna &amp; peran.
+      </Catatan>
+    );
+  }
+  return children;
+}
+
+/** Halaman yang cuma untuk superadmin — bukan Owner juga (beda dari HanyaAdmin
+ * di atas). Dipakai untuk Arsip Invoice, karena itu yang diminta: "khusus
+ * untuk superadmin". */
+function HanyaSuperadmin({ children }) {
+  const { peran } = useSesi();
+  const { t } = useBahasa();
+  if (peran !== "superadmin") {
+    return (
+      <Catatan nada="bad">
+        {t("belumDibuat")} — halaman ini hanya untuk Superadmin.
         Kalau peranmu seharusnya berbeda, minta superadmin mengubahnya di menu Pengguna &amp; peran.
       </Catatan>
     );
@@ -126,6 +144,7 @@ function PenjagaData() {
         <Route path="/setelan/akun" element={<HanyaAdmin><Akun /></HanyaAdmin>} />
         <Route path="/setelan/kebijakan" element={<HanyaAdmin><Kebijakan /></HanyaAdmin>} />
         <Route path="/setelan/pengguna" element={<HanyaAdmin><Pengguna /></HanyaAdmin>} />
+        <Route path="/setelan/arsip-invoice" element={<HanyaSuperadmin><ArsipInvoice /></HanyaSuperadmin>} />
 
         {/* Alamat lama tetap hidup. Tautan yang pernah dikirim lewat WA
             tidak boleh mati hanya karena menunya dirapikan. */}

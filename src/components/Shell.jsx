@@ -36,6 +36,7 @@ const IKON = {
   pengguna: "M10 10a3 3 0 100-6 3 3 0 000 6zM4 17c0-3 2.7-5 6-5s6 2 6 5",
   pembayaran: "M3 6h14v9H3zM3 9h14M6 13h3",
   rekap: "M4 16V9M9 16V4M14 16v-6",
+  arsip: "M3 6l2-2h6l2 2h4v10H3z M3 6h14",
 };
 
 function gantiTema(gelap) {
@@ -56,6 +57,7 @@ export default function Shell({ children }) {
 
   const admin = ADMIN.includes(peran);
   const luas = LUAS.includes(peran);
+  const superadmin = peran === "superadmin";
 
   // Lencana = jumlah yang benar-benar menunggu ORANG INI, bukan jumlah total.
   const antre =
@@ -97,6 +99,7 @@ export default function Shell({ children }) {
     { ke: "/setelan/akun", ikon: "akun", label: t("nAkun") },
     { ke: "/setelan/kebijakan", ikon: "kebijakan", label: t("nKebijakan") },
     { ke: "/setelan/pengguna", ikon: "pengguna", label: t("nPengguna") },
+    ...(superadmin ? [{ ke: "/setelan/arsip-invoice", ikon: "arsip", label: t("nArsip") }] : []),
   ] });
 
   const kelasNav = ({ isActive }) =>

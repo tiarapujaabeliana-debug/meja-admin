@@ -156,6 +156,41 @@ export function Kombo({ opsi, nilai, onPilih, placeholder, kosong = "Tidak ada y
   );
 }
 
+/* ---------- pratinjau lampiran ----------
+   Dipakai di halaman detail reimburse (pemohon & pemeriksa) dan di Arsip
+   Invoice (superadmin) — supaya lampiran bisa dilihat LANGSUNG di dalam
+   aplikasi, tidak mengandalkan tab baru yang gampang diblokir popup
+   blocker browser (itu yang bikin orang "nggak bisa lihat lampiran"
+   padahal sebenarnya cuma gagal buka tab baru, tanpa pesan galat apa pun). */
+function ekstensiDariNama(nama) {
+  return (String(nama).match(/\.[a-zA-Z0-9]{1,5}$/) || [""])[0].toLowerCase();
+}
+const EKSTENSI_GAMBAR = [".jpg", ".jpeg", ".png", ".webp", ".heic"];
+
+export function LampiranPreviewModal({ url, nama, tutup }) {
+  const ext = ekstensiDariNama(nama);
+  const gambar = EKSTENSI_GAMBAR.includes(ext);
+  const pdf = ext === ".pdf";
+  return (
+    <Modal judul={nama || "Lampiran"} tutup={tutup} lebar="max-w-3xl"
+      anak={
+        gambar ? (
+          <img src={url} alt={nama} className="max-w-full max-h-[70vh] mx-auto rounded-lg" />
+        ) : pdf ? (
+          <iframe src={url} title={nama} className="w-full rounded-lg" style={{ height: "70vh", border: 0 }} />
+        ) : (
+          <p className="text-[13px] text-ink-2 dark:text-ink-dark-2">
+            Berkas jenis {ext || "ini"} tidak bisa dipratinjau langsung di sini (browser tidak punya
+            pembaca bawaan untuk format ini). Tekan "Buka di tab baru" di bawah untuk mengunduh/melihatnya.
+          </p>
+        )
+      }
+      kaki={
+        <a className="btn" href={url} target="_blank" rel="noopener noreferrer">Buka di tab baru</a>
+      } />
+  );
+}
+
 /* ---------- daftar kunci-nilai ---------- */
 export const Kv = ({ children }) => (
   <dl className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1.5 text-[13px]">{children}</dl>

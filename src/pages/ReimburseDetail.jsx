@@ -5,7 +5,7 @@ import { useData } from "../lib/store.jsx";
 import { useSesi } from "../auth/useAuth.jsx";
 import {
   KepalaHalaman, Bagian, Kartu, Kv, KvBaris, Pil, Catatan, Tabel,
-  Jejak, ModalAlasan, usePesan,
+  Jejak, ModalAlasan, LampiranPreviewModal, usePesan,
 } from "../components/ui.jsx";
 import { rupiah } from "../lib/format.js";
 import {
@@ -222,22 +222,32 @@ export default function ReimburseDetail() {
   );
 }
 
-/** Lampiran dibuka lewat tautan bertanda tangan yang berumur 10 menit. */
+/** Lampiran dibuka lewat tautan bertanda tangan yang berumur 10 menit, dan
+ * dipratinjau LANGSUNG di dalam modal — bukan window.open ke tab baru,
+ * karena tab baru gampang diblokir popup blocker browser tanpa pesan
+ * galat apa pun (kelihatannya seperti "tidak bisa dibuka" padahal cuma
+ * diam-diam gagal, dan orangnya tidak tahu kenapa). */
 function TombolLampiran({ jalur, nama }) {
   const pesan = usePesan();
   const [sibuk, setSibuk] = useState(false);
+  const [pratinjau, setPratinjau] = useState(null); // { url, nama } | null
   if (!jalur) return <span className="hint">—</span>;
   return (
-    <button className="chip underline underline-offset-2" disabled={sibuk}
-      onClick={async () => {
-        setSibuk(true);
-        try {
-          const r = await panggil("lampiran-url", { aksi: "buka", jalur });
-          window.open(r.url, "_blank", "noopener");
-        } catch (e) { pesan(e.message, "bad"); }
-        finally { setSibuk(false); }
-      }}>
-      {sibuk ? "…" : (nama || "lampiran")}
-    </button>
+    <>
+      <button className="chip underline underline-offset-2" disabled={sibuk}
+        onClick={async () => {
+          setSibuk(true);
+          try {
+            const r = await panggil("lampiran-url", { aksi: "buka", jalur });
+            setPratinjau({ url: r.url, nama });
+          } catch (e) { pesan(e.message, "bad"); }
+          finally { setSibuk(false); }
+        }}>
+        {sibuk ? "…" : (nama || "lampiran")}
+      </button>
+      {pratinjau && (
+        <LampiranPreviewModal url={pratinjau.url} nama={pratinjau.nama} tutup={() => setPratinjau(null)} />
+      )}
+    </>
   );
 }

@@ -25,7 +25,7 @@ const KAMUS = {
     nTerbit: "Dokumen terbit", nAturan: "Aturan main", nAsumsi: "Asumsi & pertanyaan",
     nTemplate: "Template dokumen", nAkun: "Akun jurnal", nPihak: "Karyawan & vendor",
     nKebijakan: "Ambang & periode", nPengguna: "Pengguna & peran",
-    nPembayaran: "Pembayaran", nRekap: "Rekap reimburse",
+    nPembayaran: "Pembayaran", nRekap: "Rekap reimburse", nArsip: "Arsip invoice",
     // --- login ---
     loginJudul: "Masuk ke Meja Admin", loginEmail: "Email", loginSandi: "Kata sandi",
     loginLupa: "Lupa kata sandi?", loginKirimReset: "Kirim tautan atur ulang",
@@ -193,6 +193,11 @@ const KAMUS = {
     rkLede: "Total reimburse periode berjalan, per orang — bisa dilihat kapan saja sebelum tanggal cut-off.",
     rkTotalPeriode: "Total periode ini", rkJumlahPengajuan: "Jumlah pengajuan",
     rkJumlahPengaju: "Jumlah pengaju", rkPerOrang: "Per orang",
+    // --- arsip invoice (superadmin) ---
+    arsipJudul: "Arsip invoice", arsipLihat: "Lihat",
+    arsipLede: "Semua bukti reimburse, disusun seperti folder: bulan → pemohon → berkas. Datanya sama dengan menu Reimburse, cuma ditampilkan tersusun di sini.",
+    arsipKosong: "Belum ada lampiran yang tersimpan.",
+    arsipKosongSub: "Begitu ada pengajuan reimburse dengan lampiran, arsipnya muncul di sini otomatis.",
     // --- halaman rujukan ---
     aturanLede: "Ditulis di layar, bukan di dokumen terpisah. Siapa pun yang datanya diproses di sini berhak memeriksa aturannya kapan saja.",
     asumsiLede: "Yang belum dijawab di formulir kebutuhan, ditulis di sini apa adanya. Selama masih di halaman ini, dia asumsi — bukan keputusan.",
@@ -210,7 +215,7 @@ const KAMUS = {
     nTerbit: "Issued documents", nAturan: "How it works", nAsumsi: "Assumptions & questions",
     nTemplate: "Document templates", nAkun: "Ledger accounts", nPihak: "People & vendors",
     nKebijakan: "Threshold & period", nPengguna: "Users & roles",
-    nPembayaran: "Payments", nRekap: "Claims recap",
+    nPembayaran: "Payments", nRekap: "Claims recap", nArsip: "Invoice archive",
     loginJudul: "Sign in to Meja Admin", loginEmail: "Email", loginSandi: "Password",
     loginLupa: "Forgot your password?", loginKirimReset: "Send reset link",
     loginResetTerkirim: "A reset link was sent to %e. Check the spam folder too.",
@@ -369,6 +374,11 @@ const KAMUS = {
     rkLede: "Total claims for the open period, per person — can be checked anytime before the cut-off date.",
     rkTotalPeriode: "Total this period", rkJumlahPengajuan: "Number of claims",
     rkJumlahPengaju: "Number of claimants", rkPerOrang: "By person",
+    // --- invoice archive (superadmin) ---
+    arsipJudul: "Invoice archive", arsipLihat: "View",
+    arsipLede: "Every reimbursement proof, laid out like folders: month → claimant → file. Same data as the Reimbursement menu, just organized here.",
+    arsipKosong: "No attachments saved yet.",
+    arsipKosongSub: "Once a claim with an attachment exists, its archive entry shows up here automatically.",
     aturanLede: "Written on screen, not in a separate document. Anyone whose data passes through here may check the rules at any time.",
     asumsiLede: "Whatever the requirements form left unanswered is written here as-is. While it sits on this page it is an assumption — not a decision.",
     asumsiHal: "Item", asumsiDipakai: "Used for now", asumsiPerlu: "What still needs answering",
