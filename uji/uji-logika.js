@@ -169,29 +169,70 @@ uji("yang sudah disetujui tidak bisa diapa-apakan lagi", () => {
 bagian("Validasi pengajuan");
 
 const AKUN_SAH = ["6-1001", "6-1101"];
+const REK_OK = { jenisVendor: "karyawan", nama: "Rizky Pratama", bank: "BCA", norek: "1234567890" };
 
 uji("pengajuan lengkap lolos", () => {
-  const d = { keperluan: "ATK", lines: [{ desc: "kertas", akun: "6-1101", qty: 2, harga: 62000, file: "a.pdf" }] };
+  const d = {
+    keperluan: "ATK", noInvoice: "-", tanggalInvoice: "2026-09-10",
+    lines: [{ desc: "kertas", akun: "6-1101", qty: 2, harga: 62000 }],
+    lampiranList: [{ jalur: "u1/a.pdf", nama: "a.pdf" }],
+    rekeningTujuan: REK_OK,
+  };
   assert.deepEqual(validasiPengajuan(d, AKUN_SAH), []);
 });
 uji("SEMUA kesalahan dilaporkan sekaligus, bukan satu per satu", () => {
-  const d = { keperluan: "", lines: [{ desc: "", akun: "", qty: 0, harga: 0, file: "" }] };
+  const d = { keperluan: "", lines: [{ desc: "", akun: "", qty: 0, harga: 0 }] };
   const e = validasiPengajuan(d, AKUN_SAH);
-  assert.equal(e.length, 6, "harus 6: keperluan + desc + akun + qty + harga + file");
+  // keperluan + tanggalInvoice + noInvoice + desc + akun + qty + harga +
+  // lampiran + 4 isian rekening tujuan (jenis, nama, bank, norek) = 12
+  assert.equal(e.length, 12);
 });
 uji("akun di luar daftar ditolak", () => {
-  const d = { keperluan: "x", lines: [{ desc: "y", akun: "9-9999", qty: 1, harga: 1000, file: "a.pdf" }] };
+  const d = {
+    keperluan: "x", tanggalInvoice: "2026-09-10", noInvoice: "-",
+    lines: [{ desc: "y", akun: "9-9999", qty: 1, harga: 1000 }],
+    lampiranList: [{ jalur: "u1/a.pdf" }], rekeningTujuan: REK_OK,
+  };
   assert.ok(validasiPengajuan(d, AKUN_SAH).some((x) => x.k === "akunAsing"));
 });
 uji("lampiran wajib — tanpa itu tidak bisa dikirim", () => {
-  const d = { keperluan: "x", lines: [{ desc: "y", akun: "6-1001", qty: 1, harga: 1000, file: "" }] };
-  assert.ok(validasiPengajuan(d, AKUN_SAH).some((x) => x.k === "file"));
+  const d = {
+    keperluan: "x", tanggalInvoice: "2026-09-10", noInvoice: "-",
+    lines: [{ desc: "y", akun: "6-1001", qty: 1, harga: 1000 }],
+    lampiranList: [], rekeningTujuan: REK_OK,
+  };
+  assert.ok(validasiPengajuan(d, AKUN_SAH).some((x) => x.k === "lampiran"));
+});
+uji("nomor invoice wajib — kosong ditolak, \"-\" diterima", () => {
+  const dasar = {
+    keperluan: "x", tanggalInvoice: "2026-09-10",
+    lines: [{ desc: "y", akun: "6-1001", qty: 1, harga: 1000 }],
+    lampiranList: [{ jalur: "u1/a.pdf" }], rekeningTujuan: REK_OK,
+  };
+  assert.ok(validasiPengajuan({ ...dasar, noInvoice: "" }, AKUN_SAH).some((x) => x.k === "noInvoice"));
+  assert.deepEqual(validasiPengajuan({ ...dasar, noInvoice: "-" }, AKUN_SAH), []);
+});
+uji("rekening tujuan wajib lengkap (jenis, nama, bank, nomor)", () => {
+  const dasar = {
+    keperluan: "x", tanggalInvoice: "2026-09-10", noInvoice: "-",
+    lines: [{ desc: "y", akun: "6-1001", qty: 1, harga: 1000 }],
+    lampiranList: [{ jalur: "u1/a.pdf" }],
+  };
+  assert.ok(validasiPengajuan({ ...dasar, rekeningTujuan: {} }, AKUN_SAH)
+    .some((x) => ["rtJenis", "rtNama", "rtBank", "rtNorek"].includes(x.k)));
+  assert.ok(validasiPengajuan({ ...dasar, rekeningTujuan: { ...REK_OK, jenisVendor: "bukan-jenis-sah" } }, AKUN_SAH)
+    .some((x) => x.k === "rtJenis"));
+  assert.deepEqual(validasiPengajuan({ ...dasar, rekeningTujuan: REK_OK }, AKUN_SAH), []);
 });
 uji("nomor baris di pesan kesalahan menunjuk baris yang benar", () => {
-  const d = { keperluan: "x", lines: [
-    { desc: "ok", akun: "6-1001", qty: 1, harga: 1000, file: "a.pdf" },
-    { desc: "", akun: "6-1001", qty: 1, harga: 1000, file: "a.pdf" },
-  ] };
+  const d = {
+    keperluan: "x", tanggalInvoice: "2026-09-10", noInvoice: "-",
+    lampiranList: [{ jalur: "u1/a.pdf" }], rekeningTujuan: REK_OK,
+    lines: [
+      { desc: "ok", akun: "6-1001", qty: 1, harga: 1000 },
+      { desc: "", akun: "6-1001", qty: 1, harga: 1000 },
+    ],
+  };
   const e = validasiPengajuan(d, AKUN_SAH);
   assert.equal(e[0].n, 2);
 });

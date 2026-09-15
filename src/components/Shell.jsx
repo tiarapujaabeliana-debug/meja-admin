@@ -82,10 +82,14 @@ export default function Shell({ children }) {
       ...(luas ? [{ ke: "/pembayaran", ikon: "pembayaran", label: t("nPembayaran"), lencana: antrePembayaran }] : []),
       ...(luas ? [{ ke: "/reimburse-rekap", ikon: "rekap", label: t("nRekap") }] : []),
     ] },
-    { g: t("gRujukan"), item: [
-      { ke: "/aturan", ikon: "aturan", label: t("nAturan") },
-      { ke: "/asumsi", ikon: "asumsi", label: t("nAsumsi") },
-    ] },
+    // Menu "Aturan main" dan "Asumsi & pertanyaan" sengaja tidak digambar
+    // di sini (permintaan Sony 15 Sep 2026) — halamannya sendiri TIDAK
+    // dihapus, jadi tautan lama yang pernah dikirim lewat WhatsApp tetap
+    // hidup. Kalau perlu dimunculkan lagi, tinggal balikkan grup ini:
+    // { g: t("gRujukan"), item: [
+    //   { ke: "/aturan", ikon: "aturan", label: t("nAturan") },
+    //   { ke: "/asumsi", ikon: "asumsi", label: t("nAsumsi") },
+    // ] },
   ];
   if (admin) grup.push({ g: t("gSetelan"), item: [
     { ke: "/setelan/template", ikon: "template", label: t("nTemplate") },

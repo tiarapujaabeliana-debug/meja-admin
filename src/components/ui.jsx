@@ -2,7 +2,8 @@
  * Komponen dasar. Semuanya mengambil warna dari kelas di index.css, yang
  * mengambil dari tailwind.config.js. Jangan menulis warna literal di sini.
  */
-import { useEffect, useState, createContext, useContext, useCallback } from "react";
+import { useEffect, useState, useRef, createContext, useContext, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 /* ---------- pil status ---------- */
 export function Pil({ nada = "muted", children, besar }) {
@@ -83,6 +84,74 @@ export function Isian({ label, wajib, hint, salah, children, htmlFor }) {
       {children}
       {hint && <span className="hint">{hint}</span>}
       {salah && <span className="text-[11.5px] text-bad dark:text-bad-dark">{salah}</span>}
+    </div>
+  );
+}
+
+/* ---------- pencarian & pilihan (combobox) ----------
+   Dipakai untuk daftar yang panjang (akun jurnal, rekening tujuan) supaya
+   orang bisa MENGETIK untuk mencari, bukan scroll satu-satu. Daftarnya
+   digambar lewat portal ke <body> dan diposisikan "fixed" mengikuti kotak
+   isiannya — supaya tidak terpotong kalau kotaknya ada di dalam tabel yang
+   bisa di-scroll (overflow-x-auto pada .tabel-bungkus akan memotong
+   dropdown yang absolute biasa). */
+export function Kombo({ opsi, nilai, onPilih, placeholder, kosong = "Tidak ada yang cocok.", salah }) {
+  const [buka, setBuka] = useState(false);
+  const [q, setQ] = useState("");
+  const [pos, setPos] = useState(null);
+  const bungkusRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const bukaDaftar = () => {
+    const r = inputRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    setQ(""); setBuka(true);
+  };
+
+  useEffect(() => {
+    if (!buka) return;
+    const diLuar = (e) =>
+      !bungkusRef.current?.contains(e.target) && !e.target.closest?.("[data-kombo-daftar]");
+    const tutupSaja = () => setBuka(false);
+    document.addEventListener("mousedown", diLuar);
+    window.addEventListener("scroll", tutupSaja, true);
+    window.addEventListener("resize", tutupSaja);
+    return () => {
+      document.removeEventListener("mousedown", diLuar);
+      window.removeEventListener("scroll", tutupSaja, true);
+      window.removeEventListener("resize", tutupSaja);
+    };
+  }, [buka]);
+
+  const terpilih = opsi.find((o) => o.nilai === nilai);
+  const kunci = q.trim().toLowerCase();
+  const cocok = kunci
+    ? opsi.filter((o) => (o.label + " " + (o.sub || "")).toLowerCase().includes(kunci))
+    : opsi;
+
+  return (
+    <div ref={bungkusRef} className="relative">
+      <input ref={inputRef} className={`inp ${salah ? "inp-salah" : ""}`} placeholder={placeholder}
+        value={buka ? q : (terpilih ? terpilih.label : "")}
+        onFocus={bukaDaftar}
+        onClick={bukaDaftar}
+        onChange={(e) => { setQ(e.target.value); if (!buka) setBuka(true); }} />
+      {buka && pos && createPortal(
+        <div data-kombo-daftar
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }}
+          className="z-[70] max-h-64 overflow-auto rounded-lg border border-line dark:border-line-dark
+            bg-surface dark:bg-surface-dark shadow-xl">
+          {cocok.length === 0 ? (
+            <div className="px-3 py-2 text-[12.5px] hint">{kosong}</div>
+          ) : cocok.map((o) => (
+            <button key={o.nilai} type="button"
+              className="w-full text-left px-3 py-2 text-[13px] hover:bg-surface-2 dark:hover:bg-surface-dark-2"
+              onClick={() => { onPilih(o.nilai); setBuka(false); setQ(""); }}>
+              <div className="font-medium">{o.label}</div>
+              {o.sub && <div className="hint">{o.sub}</div>}
+            </button>
+          ))}
+        </div>, document.body)}
     </div>
   );
 }

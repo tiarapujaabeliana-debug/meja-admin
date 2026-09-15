@@ -25,8 +25,14 @@ function sb() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-const EKSTENSI_BOLEH = [".pdf", ".jpg", ".jpeg", ".png", ".heic", ".webp"];
-const BATAS_BYTE = 10 * 1024 * 1024; // 10 MB
+const EKSTENSI_BOLEH = [".pdf", ".jpg", ".jpeg", ".png", ".heic", ".webp", ".doc", ".docx"];
+// Tidak ada batas ukuran (keputusan Sony 15 Sep 2026) — berkasnya memang
+// tidak pernah melewati Netlify Function (lihat komentar di atas), jadi
+// batas 10 MB fungsi itu sendiri tidak pernah tersentuh oleh unggahan ini.
+// Yang tetap berlaku adalah batas paket Supabase Storage di akun masing-
+// masing (mis. paket gratis Supabase membatasi ukuran per berkas) — itu
+// di luar kendali aplikasi ini dan akan muncul sebagai pesan galat dari
+// Supabase sendiri kalau kelewat.
 
 export const handler = handlerAman(async ({ db, aku, muatan }) => {
   const { aksi } = muatan;
@@ -44,11 +50,6 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
       throw salah(
         `Jenis berkas "${ext || "tanpa ekstensi"}" tidak diterima. Yang bisa diunggah: ` +
         `${EKSTENSI_BOLEH.join(", ")}. Kalau notanya difoto, simpan sebagai JPG atau PNG dulu.`);
-    }
-    if (ukuran > BATAS_BYTE) {
-      throw salah(
-        `Berkas ${(ukuran / 1024 / 1024).toFixed(1)} MB, batasnya 10 MB. Foto dari HP biasanya bisa ` +
-        `dikecilkan lewat menu bagikan → ubah ukuran, atau difoto ulang dengan resolusi lebih rendah.`);
     }
 
     const acak = Math.random().toString(36).slice(2, 10);
@@ -68,7 +69,7 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
     const jalur = String(muatan.jalur || "");
     if (!jalur) throw salah("Jalur berkas tidak disertakan.");
 
-    if (!["superadmin", "owner", "director"].includes(aku.peran)) {
+    if (!["superadmin", "owner", "director", "finance"].includes(aku.peran)) {
       const milikku = jalur.startsWith(`${aku.uid}/`);
       if (!milikku) {
         // Mungkin lampiran orang lain di pengajuan yang dia ikut lihat —
@@ -87,4 +88,8 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
   }
 
   throw salah(`Aksi "${aksi}" tidak dikenal.`);
-}, { perlu: ["pemohon", "superadmin", "director", "owner"] });
+// "finance" ditambahkan (15 Sep 2026) supaya Finance bisa membuka lampiran
+// dari halaman detail pengajuan sebelum menandai sudah dibayar — sebelumnya
+// perannya tidak masuk daftar ini sama sekali dan tombolnya akan selalu
+// ditolak server walau tampil di layar.
+}, { perlu: ["pemohon", "superadmin", "director", "owner", "finance"] });

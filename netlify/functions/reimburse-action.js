@@ -13,7 +13,7 @@ import {
 } from "./_lib/admin.js";
 import {
   validasiPengajuan, totalPengajuan, setelahDirector, aksiTersedia,
-  AKSI_BUTUH_ALASAN, periodeDari, STATUS_FINAL,
+  AKSI_BUTUH_ALASAN, periodeDari, STATUS_FINAL, JENIS_VENDOR,
 } from "../../src/lib/reimburseMeta.js";
 
 const PESAN_VALIDASI = {
@@ -26,7 +26,20 @@ const PESAN_VALIDASI = {
   harga: (e) => `Baris ${e.n}: harga satuan harus lebih dari 0.`,
   lampiran: () => "Lampiran bukti belum diunggah.",
   tanggalInvoice: () => "Tanggal invoice belum diisi atau tidak berbentuk YYYY-MM-DD.",
+  noInvoice: () => "Nomor invoice belum diisi. Kalau notanya memang tidak punya nomor, isi dengan \"-\".",
+  rtJenis: () => "Jenis vendor rekening tujuan belum dipilih.",
+  rtNama: () => "Nama rekening tujuan belum diisi.",
+  rtBank: () => "Bank rekening tujuan belum diisi.",
+  rtNorek: () => "Nomor rekening tujuan belum diisi.",
 };
+
+const bersih = (v) => String(v ?? "").trim();
+
+/** Kunci dokumen yang stabil untuk satu nomor rekening, supaya rekening
+ * yang sama yang diketik ulang oleh orang berbeda tidak menghasilkan dua
+ * baris kembar di daftar bersama. Nama/bank boleh beda ejaan orang ke
+ * orang; nomor rekening adalah satu-satunya bagian yang seharusnya unik. */
+const kunciRekening = (norek) => bersih(norek).replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || null;
 
 /** Nomor RB berurut per tahun, dialokasikan di dalam transaksi. */
 async function nomorBaru(tx, db, tahun) {
@@ -62,6 +75,13 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
     const periode = periodeDari(tanggalServer());
     await pastikanPeriodeTerbuka(db, periode);
 
+    const rt = draft.rekeningTujuan || {};
+    const rekeningTujuan = {
+      jenisVendor: JENIS_VENDOR.includes(rt.jenisVendor) ? rt.jenisVendor : "karyawan",
+      nama: bersih(rt.nama), bank: bersih(rt.bank), norek: bersih(rt.norek),
+    };
+    const idRekening = kunciRekening(rekeningTujuan.norek);
+
     const hasil = await db.runTransaction(async (tx) => {
       const no = await nomorBaru(tx, db, new Date().getFullYear());
       const ref = db.collection("pengajuan").doc(no);
@@ -74,10 +94,16 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
         catatan: String(draft.catatan || "").trim(),
         status: "diajukan",
         periode,
-        noInvoice: draft.noInvoice ? String(draft.noInvoice).trim() : null,
+        noInvoice: bersih(draft.noInvoice) || null,
         tanggalInvoice: String(draft.tanggalInvoice).slice(0, 10),
-        lampiran: draft.lampiran || null,     // jalur di Supabase Storage, bukan URL
-        lampiranNama: draft.lampiranNama || "",
+        // Lampiran boleh lebih dari satu berkas — satu pengajuan, banyak nota.
+        lampiranList: (draft.lampiranList || []).map((f) => ({
+          jalur: f.jalur, nama: f.nama || "",   // jalur di Supabase Storage, bukan URL
+        })),
+        // Snapshot rekening tujuan DITEMPEL di pengajuannya sendiri (bukan
+        // cuma menunjuk ke daftar master) — supaya kalau daftar bersama
+        // diedit belakangan, riwayat pengajuan lama tidak ikut berubah.
+        rekeningTujuan,
         lines: (draft.lines || []).map((l) => ({
           desc: String(l.desc).trim(),
           akun: l.akun,
@@ -92,10 +118,41 @@ export const handler = handlerAman(async ({ db, aku, muatan }) => {
 
       tx.set(ref, data);
       catat(tx, db, { ref: no, aksi: "submit", dari: "draft", ke: "diajukan", aktor: aku });
+
+      // Ditambahkan (atau diperbarui) sekalian ke daftar rekening bersama,
+      // supaya pemohon lain yang membayar ke rekening yang sama tidak
+      // perlu ketik ulang — ini yang membuatnya "kelihatan semua pengguna".
+      if (idRekening) {
+        tx.set(db.collection("rekeningTujuan").doc(idRekening), {
+          ...rekeningTujuan, diubah: waktu, olehNama: aku.nama || aku.email,
+        }, { merge: true });
+      }
+
       return { no, total: data.total };
     });
 
     return oke({ ...hasil, pesan: "Pengajuan terkirim." });
+  }
+
+  /* ---------------------------------------------------------------
+     SIMPAN REKENING TUJUAN — ditambahkan langsung ke daftar bersama
+     tanpa menunggu sebuah pengajuan dikirim (dipakai tombol "+ Rekening
+     baru" di form, supaya orang lain langsung bisa memilihnya juga).
+     --------------------------------------------------------------- */
+  if (aksi === "simpanRekeningTujuan") {
+    const d = muatan.data || {};
+    if (!JENIS_VENDOR.includes(d.jenisVendor)) throw salah("Jenis vendor harus \"karyawan\" atau \"pihak_ketiga\".");
+    const rekeningTujuan = { jenisVendor: d.jenisVendor, nama: bersih(d.nama), bank: bersih(d.bank), norek: bersih(d.norek) };
+    if (!rekeningTujuan.nama) throw salah("Nama rekening belum diisi.");
+    if (!rekeningTujuan.bank) throw salah("Bank belum diisi.");
+    if (!rekeningTujuan.norek) throw salah("Nomor rekening belum diisi.");
+
+    const id = kunciRekening(rekeningTujuan.norek);
+    if (!id) throw salah("Nomor rekening tidak sah.");
+    const waktu = stempelServer();
+    await db.collection("rekeningTujuan").doc(id).set(
+      { ...rekeningTujuan, diubah: waktu, olehNama: aku.nama || aku.email }, { merge: true });
+    return oke({ id, pesan: `Rekening ${rekeningTujuan.nama} tersimpan di daftar bersama.` });
   }
 
   /* ---------------------------------------------------------------

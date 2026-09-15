@@ -141,8 +141,25 @@ export default function ReimburseDetail() {
               ? <span className="font-mono font-semibold">{p.noInvoice}</span>
               : "—"}
           </KvBaris>
-          <KvBaris k={t("kLampiran")}><TombolLampiran jalur={p.lampiran} nama={p.lampiranNama} /></KvBaris>
+          <KvBaris k={t("kLampiran")}>
+            {(p.lampiranList && p.lampiranList.length > 0)
+              ? <div className="flex flex-col gap-1">
+                {p.lampiranList.map((f) => <TombolLampiran key={f.jalur} jalur={f.jalur} nama={f.nama} />)}
+              </div>
+              : <span className="hint">—</span>}
+          </KvBaris>
           {p.catatan && <KvBaris k={t("fCatatan")}>{p.catatan}</KvBaris>}
+        </Kv></Kartu>
+        <Kartu className="p-4"><Kv>
+          <KvBaris k={t("rtJudul")}>
+            {p.rekeningTujuan?.norek
+              ? <>
+                <div className="font-mono font-semibold">{p.rekeningTujuan.norek}</div>
+                <div className="hint">{p.rekeningTujuan.bank} · a.n. {p.rekeningTujuan.nama}
+                  {" · "}{p.rekeningTujuan.jenisVendor === "pihak_ketiga" ? t("rtPihakKetiga") : t("rtKaryawan")}</div>
+              </>
+              : <span className="hint">—</span>}
+          </KvBaris>
         </Kv></Kartu>
       </div>
 

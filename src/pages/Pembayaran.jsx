@@ -12,14 +12,16 @@ import { slugNomor } from "../lib/nav.js";
 /**
  * Satu halaman, dua peran berbeda:
  *  - Director melepas pengajuan yang sudah disetujui ke antrean bayar.
- *  - Finance melihat rekening tujuan lalu menandai sudah ditransfer.
+ *  - Finance melihat rekening tujuan (dipilih/diisi pemohon saat
+ *    mengajukan, tersimpan di pengajuannya sendiri) lalu menandai sudah
+ *    ditransfer.
  * Superadmin/Owner melihat keduanya tanpa tombol aksi (read-only), supaya
  * tetap bisa memantau sejauh mana pembayaran berjalan tanpa ikut memegang
  * tombolnya sendiri.
  */
 export default function Pembayaran() {
   const { t } = useBahasa();
-  const { pengajuan, rekeningUser } = useData();
+  const { pengajuan } = useData();
   const { peran, uid } = useSesi();
   const pesan = usePesan();
   const [sibuk, setSibuk] = useState(null); // no pengajuan yang sedang diproses
@@ -81,17 +83,18 @@ export default function Pembayaran() {
             { t: t("rbTotal"), num: true }, { t: "" },
           ]}>
             {untukDibayar.map((p) => {
-              const rek = rekeningUser(p.pemohonUid);
+              const rek = p.rekeningTujuan;
               const boleh = aksiTersedia(p, peran, uid).includes("bayar");
               return (
                 <tr key={p.no}>
                   <td><Link className="kode underline underline-offset-2" to={`/reimburse/${slugNomor(p.no)}`}>{p.no}</Link></td>
                   <td>{p.pemohonNama}</td>
                   <td>
-                    {rek?.bankNorek
+                    {rek?.norek
                       ? <>
-                        <div className="font-mono">{rek.bankNorek}</div>
-                        <div className="hint">{rek.bankNama} · a.n. {rek.bankAtasNama}</div>
+                        <div className="font-mono">{rek.norek}</div>
+                        <div className="hint">{rek.bank} · a.n. {rek.nama}
+                          {rek.jenisVendor === "pihak_ketiga" && <> · {t("rtPihakKetiga")}</>}</div>
                       </>
                       : <span className="hint">{t("pbTakAdaRekening")}</span>}
                   </td>
