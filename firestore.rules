@@ -42,6 +42,16 @@ service cloud.firestore {
     function pemeriksa() {
       return peran() == "superadmin" || peran() == "owner" || peran() == "director";
     }
+    // "Luas" = boleh melihat SELURUH pengajuan, bukan cuma miliknya sendiri.
+    // Finance tidak ikut memeriksa/menyetujui, tapi tetap perlu melihat
+    // semua pengajuan untuk menjalankan pembayaran (lihat komentar yang
+    // sama di src/lib/store.jsx). Sebelum 15 Sep 2026 aturan match
+    // /pengajuan/{id} di bawah cuma memakai pemeriksa() — jadi Finance
+    // yang query luas selalu ditolak izin walau layarnya sudah menganggap
+    // dia boleh. Itu bug lama, bukan perubahan perilaku yang disengaja.
+    function luas() {
+      return pemeriksa() || peran() == "finance";
+    }
 
     // --- Pengguna & peran ---
     // Semua yang sudah masuk boleh membaca daftar pengguna: nama pemohon
@@ -77,12 +87,21 @@ service cloud.firestore {
     }
 
     // --- Pengajuan reimburse ---
-    // Pemohon hanya melihat miliknya sendiri. Director & Owner melihat
-    // semua karena mereka yang menyetujui.
+    // Pemohon hanya melihat miliknya sendiri. Director, Owner, Superadmin
+    // melihat semua karena mereka yang menyetujui; Finance melihat semua
+    // karena dia yang menjalankan pembayaran (lihat luas() di atas).
     match /pengajuan/{id} {
-      allow read: if aktif() && (pemeriksa() || resource.data.pemohonUid == request.auth.uid);
+      allow read: if aktif() && (luas() || resource.data.pemohonUid == request.auth.uid);
       allow write: if false;
     }
+
+    // --- Rekening tujuan reimburse ---
+    // Daftar BERSAMA (nama, bank, nomor rekening) yang dipilih ulang atau
+    // ditambah siapa pun saat mengajukan reimburse, supaya rekening yang
+    // sama tidak perlu diketik ulang orang lain. Sengaja terbuka untuk
+    // SEMUA pengguna aktif, bukan cuma peran luas — itu yang membuatnya
+    // "kelihatan semua pengguna" seperti akun/karyawan/vendor.
+    match /rekeningTujuan/{id} { allow read: if aktif(); allow write: if false; }
 
     // --- Jejak audit ---
     // Append-only dari sisi function; dari browser hanya bisa dibaca.
