@@ -7,7 +7,7 @@ import {
 } from "../components/ui.jsx";
 import { panggil } from "../lib/api.js";
 
-const PERAN = ["pemohon", "superadmin", "director", "owner"];
+const PERAN = ["pemohon", "superadmin", "director", "owner", "finance"];
 
 export default function Pengguna() {
   const { t } = useBahasa();
